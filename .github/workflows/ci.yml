@@ -1,0 +1,51 @@
+name: CI - Validacao do Codigo
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  qualidade:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v4
+
+      - name: Verificar existencia do index.html
+        run: |
+          if [ ! -f index.html ]; then
+            echo "index.html nao encontrado na raiz"
+            exit 1
+          fi
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Verificar tamanho dos arquivos
+        run: |
+          arquivos_grandes=$(find . -type f -size +500k)
+          if [ ! -z "$arquivos_grandes" ]; then
+            echo "Arquivo maior que 500KB encontrado:"
+            echo "$arquivos_grandes"
+            exit 1
+          fi
+
+      - name: Bloquear palavras proibidas
+        run: |
+          if grep -R -i "TODO\|FIXME\|senha\|password" .; then
+            echo "Texto proibido encontrado no projeto"
+            exit 1
+          fi
+
+      - name: Verificar links e imagens no HTML
+        run: |
+          grep -o 'href="[^"]*"' index.html || true
+          grep -o 'src="[^"]*"' index.html || true
